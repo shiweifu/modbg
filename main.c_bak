@@ -1,0 +1,1079 @@
+#define _CRT_SECURE_NO_WARNINGS
+/*
+* simple.c -- very simple 32-bit example disassembler program
+* (c) 2004  jt / nologin.org
+*
+* How to compile in MSVC environment:
+*   cl das.c ../libdasm.c
+*
+* In Unix environment, use the supplied Makefile
+*
+*
+* Check out "das.c" for more featured example.
+*
+*/
+
+#include <stdio.h>
+#include <stdlib.h>
+//#include <sys/stat.h>
+
+// step 0: include libdasm
+#include "libdasm.h"
+
+
+// disassembled data buffer
+//unsigned char data[] = "\x01\x02";
+//unsigned char data[754] = {
+//	0x55, 0x8B, 0xEC, 0x6A, 0xFF, 0x68, 0x90, 0x36, 0x40, 0x00, 0x68, 0x96, 0x22, 0x40, 0x00, 0x64, 
+//	0xA1, 0x00, 0x00, 0x00, 0x00, 0x50, 0x64, 0x89, 0x25, 0x00, 0x00, 0x00, 0x00, 0x83, 0xEC, 0x68, 
+//	0x53, 0x56, 0x57, 0x89, 0x65, 0xE8, 0x33, 0xDB, 0x89, 0x5D, 0xFC, 0x6A, 0x02, 0xFF, 0x15, 0xF8, 
+//	0x31, 0x40, 0x00, 0x59, 0x83, 0x0D, 0x44, 0x41, 0x40, 0x00, 0xFF, 0x83, 0x0D, 0x48, 0x41, 0x40, 
+//	0x00, 0xFF, 0xFF, 0x15, 0xF4, 0x31, 0x40, 0x00, 0x8B, 0x0D, 0x38, 0x41, 0x40, 0x00, 0x89, 0x08, 
+//	0xFF, 0x15, 0xF0, 0x31, 0x40, 0x00, 0x8B, 0x0D, 0x34, 0x41, 0x40, 0x00, 0x89, 0x08, 0xA1, 0xEC, 
+//	0x31, 0x40, 0x00, 0x8B, 0x00, 0xA3, 0x40, 0x41, 0x40, 0x00, 0xE8, 0x16, 0x01, 0x00, 0x00, 0x39, 
+//	0x1D, 0x40, 0x40, 0x40, 0x00, 0x75, 0x0C, 0x68, 0x92, 0x22, 0x40, 0x00, 0xFF, 0x15, 0xE8, 0x31, 
+//	0x40, 0x00, 0x59, 0xE8, 0xE8, 0x00, 0x00, 0x00, 0x68, 0x18, 0x40, 0x40, 0x00, 0x68, 0x14, 0x40, 
+//	0x40, 0x00, 0xE8, 0xD3, 0x00, 0x00, 0x00, 0xA1, 0x30, 0x41, 0x40, 0x00, 0x89, 0x45, 0x94, 0x8D, 
+//	0x45, 0x94, 0x50, 0xFF, 0x35, 0x2C, 0x41, 0x40, 0x00, 0x8D, 0x45, 0x9C, 0x50, 0x8D, 0x45, 0x90, 
+//	0x50, 0x8D, 0x45, 0xA0, 0x50, 0xFF, 0x15, 0xE0, 0x31, 0x40, 0x00, 0x68, 0x10, 0x40, 0x40, 0x00, 
+//	0x68, 0x00, 0x40, 0x40, 0x00, 0xE8, 0xA0, 0x00, 0x00, 0x00, 0x83, 0xC4, 0x24, 0xA1, 0xDC, 0x31, 
+//	0x40, 0x00, 0x8B, 0x30, 0x89, 0x75, 0x8C, 0x80, 0x3E, 0x22, 0x75, 0x3A, 0x46, 0x89, 0x75, 0x8C, 
+//	0x8A, 0x06, 0x3A, 0xC3, 0x74, 0x04, 0x3C, 0x22, 0x75, 0xF2, 0x80, 0x3E, 0x22, 0x75, 0x04, 0x46, 
+//	0x89, 0x75, 0x8C, 0x8A, 0x06, 0x3A, 0xC3, 0x74, 0x04, 0x3C, 0x20, 0x76, 0xF2, 0x89, 0x5D, 0xD0, 
+//	0x8D, 0x45, 0xA4, 0x50, 0xFF, 0x15, 0x04, 0x30, 0x40, 0x00, 0xF6, 0x45, 0xD0, 0x01, 0x74, 0x11, 
+//	0x0F, 0xB7, 0x45, 0xD4, 0xEB, 0x0E, 0x80, 0x3E, 0x20, 0x76, 0xD8, 0x46, 0x89, 0x75, 0x8C, 0xEB, 
+//	0xF5, 0x6A, 0x0A, 0x58, 0x50, 0x56, 0x53, 0x53, 0xFF, 0x15, 0x00, 0x30, 0x40, 0x00, 0x50, 0xE8, 
+//	0x5E, 0x00, 0x00, 0x00, 0x89, 0x45, 0x98, 0x50, 0xFF, 0x15, 0xD8, 0x31, 0x40, 0x00, 0x8B, 0x45, 
+//	0xEC, 0x8B, 0x08, 0x8B, 0x09, 0x89, 0x4D, 0x88, 0x50, 0x51, 0xE8, 0x15, 0x00, 0x00, 0x00, 0x59, 
+//	0x59, 0xC3, 0x8B, 0x65, 0xE8, 0xFF, 0x75, 0x88, 0xFF, 0x15, 0xD0, 0x31, 0x40, 0x00, 0xFF, 0x25, 
+//	0x04, 0x32, 0x40, 0x00, 0xFF, 0x25, 0xD4, 0x31, 0x40, 0x00, 0xFF, 0x25, 0xE4, 0x31, 0x40, 0x00, 
+//	0x68, 0x00, 0x00, 0x03, 0x00, 0x68, 0x00, 0x00, 0x01, 0x00, 0xE8, 0x0D, 0x00, 0x00, 0x00, 0x59, 
+//	0x59, 0xC3, 0x33, 0xC0, 0xC3, 0xC3, 0xFF, 0x25, 0xFC, 0x31, 0x40, 0x00, 0xFF, 0x25, 0x00, 0x32, 
+//	0x40, 0x00, 0xFF, 0x74, 0x24, 0x10, 0xFF, 0x74, 0x24, 0x10, 0xFF, 0x74, 0x24, 0x10, 0xFF, 0x74, 
+//	0x24, 0x10, 0xE8, 0x43, 0x00, 0x00, 0x00, 0xC2, 0x10, 0x00, 0xE8, 0x69, 0xFD, 0xFF, 0xFF, 0x8B, 
+//	0x4C, 0x24, 0x04, 0x8B, 0x54, 0x24, 0x08, 0x85, 0xC9, 0x88, 0x48, 0x14, 0x89, 0x90, 0x40, 0x10, 
+//	0x00, 0x00, 0x75, 0x09, 0x6A, 0xFD, 0xFF, 0x15, 0x10, 0x32, 0x40, 0x00, 0x59, 0x6A, 0x01, 0x58, 
+//	0xC2, 0x08, 0x00, 0xE9, 0x00, 0x00, 0x00, 0x00, 0x68, 0x00, 0x06, 0x00, 0x00, 0x6A, 0x00, 0xE8, 
+//	0xC6, 0xFF, 0xFF, 0xFF, 0xA2, 0x3C, 0x41, 0x40, 0x00, 0xC3, 0xFF, 0x25, 0xC8, 0x31, 0x40, 0x00, 
+//	0x8D, 0x8D, 0x44, 0xFF, 0xFF, 0xFF, 0xE9, 0x45, 0xEE, 0xFF, 0xFF, 0x8D, 0x8D, 0x44, 0xFF, 0xFF, 
+//	0xFF, 0xE9, 0x04, 0xFC, 0xFF, 0xFF, 0xB8, 0xA0, 0x36, 0x40, 0x00, 0xE9, 0xDC, 0xFD, 0xFF, 0xFF, 
+//	0x8B, 0x4D, 0xF0, 0xE9, 0xF2, 0xFB, 0xFF, 0xFF, 0xB8, 0xD0, 0x36, 0x40, 0x00, 0xE9, 0xCA, 0xFD, 
+//	0xFF, 0xFF, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 
+//	0x8B, 0x4D, 0xF0, 0xE9, 0xD2, 0xFB, 0xFF, 0xFF, 0x8B, 0x4D, 0xF0, 0x83, 0xC1, 0x60, 0xE9, 0xCD, 
+//	0xFB, 0xFF, 0xFF, 0xB8, 0xF8, 0x36, 0x40, 0x00, 0xE9, 0x9F, 0xFD, 0xFF, 0xFF, 0xCC, 0xCC, 0xCC, 
+//	0x8D, 0x4D, 0xE0, 0xE9, 0xE4, 0xFC, 0xFF, 0xFF, 0xB8, 0x28, 0x37, 0x40, 0x00, 0xE9, 0x8A, 0xFD, 
+//	0xFF, 0xFF, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 
+//	0x8D, 0x4D, 0x94, 0xE9, 0x68, 0xEE, 0xFF, 0xFF, 0xB8, 0x50, 0x37, 0x40, 0x00, 0xE9, 0x6A, 0xFD, 
+//	0xFF, 0xFF, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 
+//	0x8D, 0x4D, 0xE0, 0xE9, 0xA4, 0xFC, 0xFF, 0xFF, 0x8D, 0x4D, 0xE4, 0xE9, 0x9C, 0xFC, 0xFF, 0xFF, 
+//	0x8D, 0x4D, 0xE8, 0xE9, 0x94, 0xFC, 0xFF, 0xFF, 0xB8, 0x78, 0x37, 0x40, 0x00, 0xE9, 0x3A, 0xFD, 
+//	0xFF, 0xFF, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 
+//	0x8D, 0x4D, 0xB4, 0xE9, 0xCE, 0xFC, 0xFF, 0xFF, 0xB8, 0xB0, 0x37, 0x40, 0x00, 0xE9, 0x1A, 0xFD, 
+//	0xFF, 0xFF, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 
+//	0x8D, 0x4D, 0xB4, 0xE9, 0xAE, 0xFC, 0xFF, 0xFF, 0xB8, 0xD8, 0x37, 0x40, 0x00, 0xE9, 0xFA, 0xFC, 
+//	0xFF, 0xFF
+//};
+
+unsigned char data[2] = {	0xFF, 0xFF };
+
+int main() {
+	// step 1: declare struct INSTRUCTION
+	INSTRUCTION inst;
+	char string[256];
+	char opBuff[32] = {0};
+	char *pdata;
+	int sum = 0;
+	int n = 0;
+	int i = 0;
+	unsigned char tmp;
+
+	pdata = data;
+
+	while(
+		// step 2: fetch instruction
+		(n = get_instruction(&inst, data + sum, MODE_32)) && (sum < 255))//;
+
+	{
+
+		memset(opBuff,0,16);
+
+		pdata = data + sum;
+		sum += n;
+		get_instruction_string(&inst, FORMAT_INTEL, 0, string, sizeof(string));
+		/*get_mnemonic_string(&inst,FORMAT_INTEL,string,n);
+		printf("%s\n", string);*/
+		//get_operand_string(&inst,&op,FORMAT_INTEL,20,string,256);
+
+//		get_operand_string
+		if(inst.modrm != 0)
+		{
+			sprintf(opBuff,"%2x%2x ",inst.opcode,inst.modrm);
+			i = 2;
+		}
+		else
+		{
+			sprintf(opBuff,"%2x ",inst.opcode);
+			i = 1;
+		}
+		
+		pdata = pdata + i;
+	
+		i = n - i;
+
+		for(n = 0; n < i; n++,pdata++)
+		{
+			tmp = *pdata;
+			sprintf(opBuff,"%s%.2x",opBuff,tmp);
+		}
+
+		printf("%s\t\t\t%s\n",opBuff, string);
+
+		if(sum % 20 == 0)
+		{
+			system("pause");
+		}
+	}
+	getchar();
+	return 0;
+}
+
+
+
+
+
+#define TRACE(a) wprintf(a); wprintf  (L"Last error = %d\n", GetLastError());
+#define TRACE_ERR(a,err) wprintf(a); wprintf  (L"Last error = %d\n", err);
+
+typedef DWORD (*ProcessTheEvent)(DEBUG_EVENT *dbg);
+//保存断点信息的结构体
+typedef struct BreakInfo BreakInfo;
+typedef struct BreakException BreakException;
+typedef struct ThreadTableNode ThreadTableNode;
+static struct BreakException
+{
+                unsigned char nLen; //指令的长度
+                char breakByte[BPBYTE_LEN]; //用来保存要当作异常断点的数据
+} BreakPointTable[] = 
+{
+                {1,0xcc},
+                {0,0}
+};
+
+//定义结构体
+typedef union REG_DR7
+{
+                struct
+                {
+                                ULONG Local0 : 1;
+                                ULONG Global0 : 1;
+                                ULONG Local1 : 1;
+                                ULONG Global1 : 1;
+                                ULONG Local2 : 1;
+                                ULONG Global2 : 1;
+                                ULONG Local3 : 1;
+                                ULONG Global3 : 1;
+                                ULONG LocalE : 1;
+                                ULONG GlobalE : 1;
+
+                                ULONG Reserved : 6;
+
+                                ULONG ReadWrite0 : 2;
+                                ULONG Len0 : 2;
+                                ULONG ReadWrite1 : 2;
+                                ULONG Len1: 2;
+                                ULONG ReadWrite2 : 2;
+                                ULONG Len2 : 2;
+                                ULONG ReadWrite3 : 2;
+                                ULONG Len3 : 2;
+                };
+                ULONG Raw;
+} *PREG_DR7;
+
+//用来存储断点信息
+static struct BreakInfo
+{
+                char *pRemoteAddr;
+                char oldByte[BPBYTE_LEN];
+                BreakException *pBe;
+};
+
+//事件消息对照表
+static struct
+{
+                DWORD dwEventId;
+                ProcessTheEvent PeFun;
+} EventFuncs[] = 
+{
+                {EXCEPTION_DEBUG_EVENT,OnDebugEvent},
+                {CREATE_THREAD_DEBUG_EVENT,OnCreateThreadEvent},
+                {CREATE_PROCESS_DEBUG_EVENT,OnCreateProcessDebugEvent},
+                {EXIT_THREAD_DEBUG_EVENT,OnExitThreadDebugEvent},
+                {EXIT_PROCESS_DEBUG_EVENT,OnExitProcessDebugEvent},
+                {LOAD_DLL_DEBUG_EVENT,OnLoadDllDebugEvent},
+                {UNLOAD_DLL_DEBUG_EVENT,OnUnLoadDllDebugEvent},
+                {OUTPUT_DEBUG_STRING_EVENT,OnOutputDebugStringEvent},
+                {RIP_EVENT,OnRipEvent},
+                {0,0}
+};
+
+static struct ThreadTableNode
+{
+                DWORD dwThreadId;
+                HANDLE hThread;
+};
+
+//#目标进程句柄，目前没用
+static HANDLE targetProcessHandle = NULL; 
+
+//断点表，用于随机生成断点写入目标进程
+BreakInfo BreakTable[5] = {0};
+
+
+static int nBreakInfoIndex = 0;
+static int nBPTableIndex = 0;
+
+static HANDLE hRemoteProcess = 0;
+static List_T lstThreadHandleTable = NULL;
+static DWORD oldProtect = 0;
+static LPVOID g_lpStartAddr = NULL;
+
+
+
+
+// 从远程线程中读取一段字符串，它是对ReadChar函数的封裿
+// name: ReadRemoteString
+// @param
+// process: 目标进程
+// address: 要读取的地址
+// length: 读取的长度
+// unicode: 是否为unicode
+// @return
+// 返回一段在函数中申请的字符丿需在外面释放
+WCHAR * ReadRemoteString(HANDLE process, LPVOID address, WORD length, WORD unicode)
+{
+                WCHAR * msg = (WCHAR*)malloc(sizeof(WCHAR)*length);
+                WORD i;
+                if (!msg) return NULL;
+                memset(msg, 0, sizeof(WCHAR)*(length));
+
+                if ( unicode )
+                {
+                                ReadProcessMemory(process, address ,msg, length*sizeof(WCHAR),NULL);  
+                                return msg;
+                } 
+                else
+                {
+                                BYTE * originalMsg =(BYTE*) malloc(sizeof(BYTE)*length);
+                                if (!originalMsg)
+                                {
+                                                free(msg);
+                                                return NULL;
+                                }
+                                memset(originalMsg, 0, sizeof(BYTE)*(length));
+
+                                ReadProcessMemory(process, address ,originalMsg, length,NULL);    
+                                for (i = 1; i < length; i++)
+                                {
+                                                msg[i] = originalMsg[i];        
+                                }
+                                return msg;
+                }
+}
+
+// 从目标进程指定地址中读取一个字笿
+// name: ReadChar
+// @param
+// process: 目标进程
+// address: 目标地址
+// @return
+// 一个字笿
+WCHAR ReadCharW(HANDLE process, LPVOID address)
+{
+                WCHAR result = '\0';
+                ReadProcessMemory(process, address ,&result, sizeof(WCHAR),NULL);
+                return result;
+};
+
+// 从目标进程指定地址中读取一个字符  
+// name: ReadChar
+// @param
+// process: 目标进程
+// address: 目标地址
+// @return
+// 一个字符
+CHAR ReadCharA(HANDLE process, LPVOID address)
+{
+                CHAR result = '\0';
+                ReadProcessMemory(process, address ,&result, sizeof(CHAR),NULL);
+                return result;
+};
+
+// 从远程线程中读取一段字符串，以零结尾，它是对ReadChar函数的封裿
+// name: ReadRemoteSZ
+// @param
+// process: 目标进程
+// address: 要读取的地址
+// length: 读取的长庿
+// unicode: 是否为unicode
+// @return
+// 返回一段在函数中申请的字符丿需在外面释政
+WCHAR * ReadRemoteSZ(HANDLE process, LPVOID address, WORD unicode)
+{
+                int nMallocLen = 0;
+                WCHAR * msg = 0;
+                BYTE * originalMsg;
+                size_t i;
+
+                if (NULL == address) return NULL;
+
+
+                if ( unicode )
+                {
+                                WCHAR * ptr = (WCHAR*)address;
+                                size_t stringLen = 0;
+                                while(ReadCharW(process, ptr++)) stringLen++; 
+                                nMallocLen = (sizeof( WCHAR)*(stringLen+1));
+                                msg = (WCHAR*)malloc(nMallocLen);
+                                if (!msg) return NULL;
+                                memset(msg, 0, sizeof(WCHAR)*(stringLen+1));
+                                ReadProcessMemory(process, address ,msg, (stringLen+1)*sizeof(WCHAR),NULL);  
+                                return msg;
+                }   
+                else
+                {
+                                CHAR * ptr = (CHAR*)address;
+                                size_t stringLen = 0;
+                                while(ReadCharA(process, ptr++)) stringLen++; 
+
+                                originalMsg = (BYTE*)malloc(sizeof(BYTE)*(stringLen+1));
+                                if (!originalMsg) return NULL;
+                                memset(originalMsg, 0, sizeof(BYTE)*(stringLen+1));
+
+                                msg = (WCHAR*)malloc(sizeof(WCHAR)*stringLen); 
+                                if (!msg) 
+                                {
+                                                free(originalMsg);
+                                                return NULL;
+                                }
+                                memset(msg, 0, sizeof(WCHAR)*(stringLen+1));
+
+                                ReadProcessMemory(process, address ,originalMsg, stringLen+1,NULL);    
+                                for ( i = 1; i < stringLen+1; i++)
+                                {
+                                                msg[i] = originalMsg[i];        
+                                }
+                                free(originalMsg);
+                                return msg;
+                }
+}
+
+// 从目标进程中读取一个地址.
+// name: ReadRemotePtr
+// @param
+// process: 目标进程
+// address: 指定地址
+// @return
+// 返回读取到的地址.
+VOID * ReadRemotePtr(HANDLE process, LPVOID address)
+{
+                VOID* newPointer = 0;
+
+                if (NULL == address) return NULL;
+                if (!ReadProcessMemory(process, address ,&newPointer, sizeof(VOID *),NULL))
+                {
+                                newPointer=NULL;
+                };  
+                return newPointer;
+}
+
+// 处理DEBUG_EVENT
+// name: ProcessEvent
+// @param
+// dbgEvent: 指向DEBUG_EVENT的执行
+// @return
+// 处理完毕，继续执行
+DWORD ProcessEvent(DEBUG_EVENT *dbgEvent)
+{
+                int i = 0;
+                printf("%s%d.%d\n", "New event generated by PID.TID=" , 
+                                dbgEvent->dwProcessId , dbgEvent->dwThreadId);
+
+                while(EventFuncs[i].PeFun != NULL)
+                {
+                                if(EventFuncs[i].dwEventId == dbgEvent->dwDebugEventCode)
+                                {
+                                                goto END_PROC;
+                                }
+                                i++;
+                }
+END_PROC:
+                return EventFuncs[i].PeFun(dbgEvent);
+}
+
+// 调试信息.被调试进程启动时会触发
+// name: OnDebugEvent
+// @param
+// 需处理dbg.u.Exception.
+// @return
+// 是否执行成功
+DWORD OnDebugEvent(DEBUG_EVENT *dbgEvent)
+{
+                //typedef struct _EXCEPTION_DEBUG_INFO { 
+                //    EXCEPTION_RECORD ExceptionRecord;
+                //    DWORD dwFirstChance;
+                //} EXCEPTION_DEBUG_INFO;
+
+                int  i = 0;
+                char nFlag = 0;
+                BOOL bRet = FALSE;
+                CONTEXT Reg;
+                DWORD dwOldValue = 0;
+                HANDLE hRemoteThread;
+
+                BOOL a;
+
+
+                CONTEXT ctx = {CONTEXT_DEBUG_REGISTERS};
+
+                union REG_DR7 dr7;
+                //HANDLE hRemoteThread;
+                printf("%s%x%s%d\n", "\tExceptionEvent:\t\n\t Code = " ,
+                                dbgEvent->u.Exception.ExceptionRecord.ExceptionCode ,  "\n\t FirstChance = " ,
+                                dbgEvent->u.Exception.dwFirstChance );
+
+                switch (dbgEvent->u.Exception.ExceptionRecord.ExceptionCode)
+                {
+                case EXCEPTION_BREAKPOINT:
+                                //BreakProcessPtr(dbgEvent->dwProcessId,
+                                //				 dbgEvent->u.Exception.ExceptionRecord.ExceptionAddress);
+                                printf("%s\r\n","breakpoint");
+                                //下面判断是否是调试者下的断点
+                                for(; 
+                                                i < nBreakInfoIndex; 
+                                                i++)
+                                {
+                                                if(dbgEvent->u.Exception.ExceptionRecord.ExceptionAddress == BreakTable[i].pRemoteAddr)
+                                                {
+                                                                nFlag = TRUE;
+                                                                break;
+                                                }
+                                }
+
+                                //如果不是用户下的断点
+                                if(nFlag == 0)
+                                {
+                                                //#这该封装成个函数用于提示用户输入
+                                                //printf("%s\r\n","y/n step?");
+                                                //fflush(stdin);
+                                                //scanf("%c",&nFlag);
+                                                //if(nFlag == 'y')
+                                                //{
+                                                ////				dbgEvent->u.Exception.ExceptionRecord.ExceptionFlags
+                                                //nFlag = FindThreadHandle(dbgEvent->dwThreadId,&hRemoteThread);
+                                                //if(nFlag == FALSE)
+                                                //{
+                                                //TRACE(L"not found thread handle in thread list");
+                                                //break;
+                                                //}
+                                                //}
+                                                //SingleStepBreak(hRemoteProcess,dbgEvent->dwThreadId,dbgEvent->u.Exception.ExceptionRecord.ExceptionAddress);
+                                }
+                                else
+                                {
+                                                //单内存断点
+                                                //bRet = BreakProcessPtr(dbgEvent->u.CreateProcessInfo.hProcess,
+                                                //					   dbgEvent->u.CreateProcessInfo.lpStartAddress);
+
+
+
+                                }
+
+                                return DBG_CONTINUE;
+
+                case EXCEPTION_SINGLE_STEP:
+                                printf("%s\r\n","step by step");
+                                printf("%s\r\n","hardbreak test resume it");
+
+
+                                a = FindThreadHandle(dbgEvent->dwThreadId,&hRemoteThread);
+                                if(!a)
+                                {
+                                                __asm int 3
+                                }
+
+                                a = GetThreadContext (hRemoteThread, &ctx);
+
+                                dr7.Raw = ctx.Dr7;
+
+                                dr7.Local0 = 0;
+                                ctx.Dr0 = 0;
+
+                                //ctx.EFlags|=0x100;
+                                ctx.Dr7 = dr7.Raw;
+                                a = SetThreadContext (hRemoteThread, &ctx);
+
+
+
+
+
+                                return DBG_CONTINUE;
+                case EXCEPTION_ACCESS_VIOLATION:
+                                printf("memory read error\n");
+                                //#这段有用，用于恢复结构体
+                                //if(!VirtualProtectEx(hRemoteProcess,lpStartAddr,4,oldProtect,&dwOldValue))
+                                //{
+                                //	GetLastError();
+                                //	__asm int 3
+                                //}
+                                return DBG_CONTINUE;
+                case 0x4000001f:
+                case 0x4000001e:
+                                return DBG_CONTINUE;
+                }
+
+#ifdef __DISPLAY__
+                DisplayExceptionEvent(&dbgEvent->u.Exception);
+#endif
+
+                return DBG_EXCEPTION_NOT_HANDLED;
+                //return TRUE;
+}
+
+// 被调试进程创建线程时时触发
+// name: OnCreateThreadEvent
+// @param
+// 需处理u.CreateThread
+// @return是否执行成功
+DWORD OnCreateThreadEvent(DEBUG_EVENT *dbgEvent)
+{            //typedef struct _CREATE_THREAD_DEBUG_INFO {
+                //    HANDLE hThread;
+                //    LPVOID lpThreadLocalBase;
+                //    LPTHREAD_START_ROUTINE lpStartAddress;
+                //} CREATE_THREAD_DEBUG_INFO;
+                ThreadTableNode *nd = NULL;
+                printf("%s%d\n" , "\tCreateThreadEvent TID=" , dbgEvent->dwThreadId );
+                DisplayCreateThreadEvent(&dbgEvent->u.CreateThread);
+
+                //将节点添加进链表
+                nd = (ThreadTableNode*)malloc(sizeof(ThreadTableNode));
+
+                nd->dwThreadId = dbgEvent->dwThreadId;
+                nd->hThread = dbgEvent->u.CreateThread.hThread;
+
+                lstThreadHandleTable = List_push(lstThreadHandleTable,nd);
+                return DBG_CONTINUE;
+}
+
+int RandomBpTableIndex()
+{
+                return nBPTableIndex;
+}
+
+// 被调试进程被创建时触发
+// name: OnCreateProcessDebugEvent
+// @param
+// 需处理u.CreateProcessInfo 
+// @return是否执行成功
+DWORD OnCreateProcessDebugEvent(DEBUG_EVENT *dbgEvent)
+{            //typedef struct _CREATE_PROCESS_DEBUG_INFO {
+                //    HANDLE hFile;
+                //    HANDLE hProcess;
+                //    HANDLE hThread;
+                //    LPVOID lpBaseOfImage;
+                //    DWORD dwDebugInfoFileOffset;
+                //    DWORD nDebugInfoSize;
+                //    LPVOID lpThreadLocalBase;
+                //    LPTHREAD_START_ROUTINE lpStartAddress;
+                //    LPVOID lpImageName;
+                //    WORD fUnicode;
+                //} CREATE_PROCESS_DEBUG_INFO, *LPCREATE_PROCESS_DEBUG_INFO;
+                ThreadTableNode *nd = NULL;
+                BOOL bRet = FALSE;
+                SIZE_T nFlag = 0;
+
+                HANDLE hRemoteThread;
+                CONTEXT ctx = {CONTEXT_DEBUG_REGISTERS};
+                BOOL a;
+                union REG_DR7 dr7;
+
+
+
+                MEMORY_BASIC_INFORMATION mbi;
+                targetProcessHandle = dbgEvent->u.CreateProcessInfo.hProcess;
+                wprintf(L"%s%d\n",L"\tCreateProcessEvent PID=" , dbgEvent->dwProcessId);
+#ifdef __DISPLAY__
+                DisplayCreateProcessEvent(&dbgEvent->u.CreateProcessInfo);
+#endif
+                hRemoteProcess = dbgEvent->u.CreateProcessInfo.hProcess;	
+
+
+
+                // 保存创建线程时的进程信息.
+                nd = (ThreadTableNode*)malloc(sizeof(ThreadTableNode));
+                nd->dwThreadId = dbgEvent->dwThreadId;
+                nd->hThread = dbgEvent->u.CreateProcessInfo.hThread;
+                lstThreadHandleTable = List_push(lstThreadHandleTable,nd);
+                //ReadProcessMemory(dbgEvent->u..hProcess,
+
+                //下个内存断点
+                //nFlag = VirtualQueryEx(dbgEvent->u.CreateProcessInfo.hProcess,
+                //						dbgEvent->u.CreateProcessInfo.lpStartAddress,
+                //						&mbi,
+                //						sizeof(mbi));
+                //设置内存断点
+                //nFlag = VirtualProtectEx(dbgEvent->u.CreateProcessInfo.hProcess,
+                //						dbgEvent->u.CreateProcessInfo.lpStartAddress,
+                //						4,
+                //						PAGE_NOACCESS,
+                //						&oldProtect);
+                //if(nFlag > 0)
+                //{
+                //	lpStartAddr = dbgEvent->u.CreateProcessInfo.lpStartAddress;
+                //	printf("set memory break point success.");
+                //}
+
+
+                //用来设置硬件断点
+
+                nFlag = FindThreadHandle(dbgEvent->dwThreadId,&hRemoteThread);
+                a = GetThreadContext (hRemoteThread, &ctx);
+
+                dr7.Raw = ctx.Dr7;
+                dr7.Len0 = 3;
+                dr7.Local0 = 1;	
+                dr7.ReadWrite0 = 3;
+
+                ctx.Dr0 = dbgEvent->u.Exception.ExceptionRecord.ExceptionAddress;
+                ctx.Dr7 = dr7.Raw;
+                a = SetThreadContext (hRemoteThread, &ctx);
+
+                g_lpStartAddr = dbgEvent->u.Exception.ExceptionRecord.ExceptionAddress;
+
+                return DBG_CONTINUE;
+}
+
+// 被调试线程退出时触发
+// name: OnExitThreadDebugEvent
+// @param
+// 需处理u.ExitThread  
+// @return是否执行成功
+DWORD OnExitThreadDebugEvent(DEBUG_EVENT *dbgEvent)
+{
+                //typedef struct _EXIT_THREAD_DEBUG_INFO {
+                //    DWORD dwExitCode;
+                //} EXIT_THREAD_DEBUG_INFO, *LPEXIT_THREAD_DEBUG_INFO;
+                printf("%s%d%s%d\n" ,"\tExitThreadEvent TID=" , dbgEvent->dwThreadId , " ExitCode=" ,
+                                dbgEvent->u.ExitThread.dwExitCode);
+#ifdef __DISPLAY__
+                DisplayExitThreadEvent(&dbgEvent->u.ExitThread);
+#endif
+                return DBG_CONTINUE;
+}
+
+// 被调试进程退出时触发
+// name: OnExitProcessDebugEvent
+// @param
+// 需处理u.ExitProcess   
+// @return是否执行成功
+DWORD OnExitProcessDebugEvent(DEBUG_EVENT *dbgEvent)
+{            //typedef struct _EXIT_PROCESS_DEBUG_INFO {
+                //    DWORD dwExitCode;
+                //} EXIT_PROCESS_DEBUG_INFO, *LPEXIT_PROCESS_DEBUG_INFO;
+                printf("%s%x\n" ,"\tExitProcessEvent ExitCode=" , dbgEvent->u.ExitProcess.dwExitCode );
+#ifdef __DISPLAY__
+                DisplayExitProcessEvent(&dbgEvent->u.ExitProcess);
+#endif
+                return 0;
+}
+
+// 被调试进程加载DLL时触发
+// name: OnLoadDllDebugEvent
+// @param
+// 需处理u.LoadDll    
+// @return是否执行成功
+DWORD OnLoadDllDebugEvent(DEBUG_EVENT *dbgEvent)
+{
+                //typedef struct _LOAD_DLL_DEBUG_INFO {
+                //    HANDLE hFile;
+                //    LPVOID lpBaseOfDll;
+                //    DWORD dwDebugInfoFileOffset;
+                //    DWORD nDebugInfoSize;
+                //    LPVOID lpImageName;
+                //    WORD fUnicode;
+                //} LOAD_DLL_DEBUG_INFO, *LPLOAD_DLL_DEBUG_INFO;
+                LPVOID imageAddress;
+                WCHAR * msg;
+                printf("%s\n", "\tLoadDllEvent ");
+                imageAddress = ReadRemotePtr(targetProcessHandle, dbgEvent->u.LoadDll.lpImageName);
+                msg = ReadRemoteSZ(targetProcessHandle, imageAddress, dbgEvent->u.LoadDll.fUnicode);
+
+                if (NULL == msg)
+                {
+                                wprintf(L"%s\n", L"ImageName: cannot be read");
+                }
+                else
+                {
+                                wprintf(L"%s%s\n", L"ImageName: " , msg );
+                                free( msg);
+                }
+#ifdef __DISPLAY__
+                DisplayDllLoadEvent(&dbgEvent->u.LoadDll);
+#endif
+                return DBG_CONTINUE;
+}
+
+// 被调试进程卸载DLL时触发
+// name: OnUnLoadDllDebugEvent
+// @param
+// 需处理u.UnloadDll     
+// @return是否执行成功
+DWORD OnUnLoadDllDebugEvent(DEBUG_EVENT *dbgEvent)
+{
+                //typedef struct _UNLOAD_DLL_DEBUG_INFO {
+                //    LPVOID lpBaseOfDll;
+                //} UNLOAD_DLL_DEBUG_INFO, *LPUNLOAD_DLL_DEBUG_INFO;
+
+                printf("%s%x\n", "\tUnloadDllEvent Address=" ,dbgEvent->u.UnloadDll.lpBaseOfDll );
+#ifdef __DISPLAY__
+                DisplayDllUnLoadEvent(&dbgEvent->u.UnloadDll);
+#endif
+                return DBG_CONTINUE;
+}
+
+// 被调试进程输出调试信息时触发
+// name: OnOutputDebugStringEvent
+// @param
+// 需处理u.DebugString      
+// @return是否执行成功
+DWORD OnOutputDebugStringEvent(DEBUG_EVENT *dbgEvent)
+{
+                //typedef struct _OUTPUT_DEBUG_STRING_INFO {
+                //    LPSTR lpDebugStringData;
+                //    WORD fUnicode;
+                //    WORD nDebugStringLength;
+                //} OUTPUT_DEBUG_STRING_INFO, *LPOUTPUT_DEBUG_STRING_INFO;
+
+                OUTPUT_DEBUG_STRING_INFO *OutputDebug;
+                WCHAR * msg;
+                printf("%s\n", "\tOutputDebugEvent ");
+                OutputDebug = &dbgEvent->u.DebugString;
+                msg = ReadRemoteString(targetProcessHandle, (*OutputDebug).lpDebugStringData, 
+                                (*OutputDebug).nDebugStringLength,  (*OutputDebug).fUnicode);
+                if (NULL == msg)
+                {
+                                wprintf(L"%s\n" L"Cannot read OutputDebug");
+                }
+                else
+                {
+                                wprintf(L"%s%s\n", L"OutputDebug:\t", msg );
+                                free( msg);
+                }
+
+                return DBG_CONTINUE;
+}
+
+// 当被调试进程出错时触发.
+// name: OnRipEvent
+// @param
+// 需处理u.RipInfo      
+// @return
+DWORD OnRipEvent(DEBUG_EVENT *dbgEvent)
+{            //typedef struct _RIP_INFO {
+                //    DWORD dwError;
+                //    DWORD dwType;
+                //} RIP_INFO, *LPRIP_INFO;
+
+                printf("%s%x\n", "RipEvent Error=", dbgEvent->u.RipInfo.dwError);
+                return DBG_CONTINUE;
+}
+
+
+void DisplayCreateProcessEvent ( CREATE_PROCESS_DEBUG_INFO * stCPDI )
+{
+                printf ( "Create Process Event      :\n" ) ;
+                printf ( "   hFile                  : 0x%08X\n" ,
+                                (*stCPDI).hFile                            ) ;
+                printf ( "   hProcess               : 0x%08X\n" ,
+                                (*stCPDI).hProcess                         ) ;
+                printf ( "   hThread                : 0x%08X\n" ,
+                                (*stCPDI).hThread                          ) ;
+                printf ( "   lpBaseOfImage          : 0x%08X\n" ,
+                                (*stCPDI).lpBaseOfImage                    ) ;
+                printf ( "   dwDebugInfoFileOffset  : 0x%08X\n" ,
+                                (*stCPDI).dwDebugInfoFileOffset            ) ;
+                printf ( "   nDebugInfoSize         : 0x%08X\n" ,
+                                (*stCPDI).nDebugInfoSize                   ) ;
+                printf ( "   lpThreadLocalBase      : 0x%08X\n" ,
+                                (*stCPDI).lpThreadLocalBase                ) ;
+                printf ( "   lpStartAddress         : 0x%08X\n" ,
+                                (*stCPDI).lpStartAddress                   ) ;
+                printf ( "   lpImageName            : 0x%08X\n" ,
+                                (*stCPDI).lpImageName                      ) ;
+                printf ( "   fUnicode               : 0x%08X\n" ,
+                                (*stCPDI).fUnicode                         ) ;
+}
+
+void DisplayCreateThreadEvent ( CREATE_THREAD_DEBUG_INFO * stCTDI )
+{
+                printf ( "Create Thread Event       :\n" ) ;
+                printf ( "   hThread                : 0x%08X\n" ,
+                                (*stCTDI).hThread                          ) ;
+                printf ( "   lpThreadLocalBase      : 0x%08X\n" ,
+                                (*stCTDI).lpThreadLocalBase                ) ;
+                printf ( "   lpStartAddress         : 0x%08X\n" ,
+                                (*stCTDI).lpStartAddress                   ) ;
+}
+
+void DisplayExitThreadEvent ( EXIT_THREAD_DEBUG_INFO * stETDI )
+{
+                printf ( "Exit Thread Event         :\n" ) ;
+                printf ( "   dwExitCode             : 0x%08X\n" ,
+                                (*stETDI).dwExitCode                       ) ;
+}
+
+void DisplayExitProcessEvent ( EXIT_PROCESS_DEBUG_INFO * stEPDI )
+{
+                printf ( "Exit Process Event        :\n" ) ;
+                printf ( "   dwExitCode             : 0x%08X\n" ,
+                                (*stEPDI).dwExitCode                       ) ;
+}
+
+void DisplayDllLoadEvent ( LOAD_DLL_DEBUG_INFO * stLDDI )
+{
+                printf ( "DLL Load Event            :\n" ) ;
+                printf ( "   hFile                  : 0x%08X\n" ,
+                                (*stLDDI).hFile                            ) ;
+                printf ( "   lpBaseOfDll            : 0x%08X\n" ,
+                                (*stLDDI).lpBaseOfDll                      ) ;
+                printf ( "   dwDebugInfoFileOffset  : 0x%08X\n" ,
+                                (*stLDDI).dwDebugInfoFileOffset            ) ;
+                printf ( "   nDebugInfoSize         : 0x%08X\n" ,
+                                (*stLDDI).nDebugInfoSize                   ) ;
+                printf ( "   lpImageName            : 0x%08X\n" ,
+                                (*stLDDI).lpImageName                      ) ;
+                printf ( "   fUnicode               : 0x%08X\n" ,
+                                (*stLDDI).fUnicode                         ) ;
+}
+
+void DisplayDllUnLoadEvent ( UNLOAD_DLL_DEBUG_INFO * stULDDI )
+{
+                printf ( "DLL Unload Event          :\n" ) ;
+                printf ( "   lpBaseOfDll            : 0x%08X\n" ,
+                                (*stULDDI).lpBaseOfDll                     ) ;
+}
+
+void DisplayExceptionEvent ( EXCEPTION_DEBUG_INFO * stEDI )
+{
+                printf ( "Exception Event           :\n" ) ;
+                printf ( "   dwFirstChance          : 0x%08X\n" ,
+                                (*stEDI).dwFirstChance                     ) ;
+                printf ( "   ExceptionCode          : 0x%08X\n" ,
+                                (*stEDI).ExceptionRecord.ExceptionCode     ) ;
+                printf ( "   ExceptionFlags         : 0x%08X\n" ,
+                                (*stEDI).ExceptionRecord.ExceptionFlags    ) ;
+                printf ( "   ExceptionRecord        : 0x%08X\n" ,
+                                (*stEDI).ExceptionRecord.ExceptionRecord   ) ;
+                printf ( "   ExceptionAddress       : 0x%08X\n" ,
+                                (*stEDI).ExceptionRecord.ExceptionAddress  ) ;
+                printf ( "   NumberParameters       : 0x%08X\n" ,
+                                (*stEDI).ExceptionRecord.NumberParameters  ) ;
+}
+
+BOOL BreakProcessPtr(HANDLE process, LPVOID address)
+{
+                BOOL bRet = FALSE;
+                int nRead = 0;
+                BreakInfo *bi;
+
+                if(address == NULL || process == NULL)
+                {
+                                return FALSE;
+                }
+                //#这里的大小只是为了方便测试，先写入0xcc，以后要改的
+                BreakTable[nBreakInfoIndex].pBe = &BreakPointTable[RandomBpTableIndex()];
+                BreakTable[nBreakInfoIndex].pRemoteAddr = address;
+
+                bi = &BreakTable[nBreakInfoIndex];
+
+                bRet = ReadProcessMemory(process,
+                                bi->pRemoteAddr,
+                                &bi->oldByte,
+                                (UINT)bi->pBe->nLen,
+                                &nRead);
+
+                if(bRet == FALSE)
+                {
+                                //失败就把刚刚读到的都清空
+
+                                GetLastError();
+
+                                TRACE(L"Read remote addr error");
+                                memset(bi,0,sizeof(*bi));
+                                FALSE;
+                }
+
+                //下面该写入
+
+                bRet = WriteProcessMemory(process,
+                                bi->pRemoteAddr,
+                                &bi->pBe->breakByte,
+                                bi->pBe->nLen,
+                                &nRead);
+                if(!bRet || nRead < 0)
+                {
+                                TRACE(L"Write to remote addr error");
+                                memset(bi,0,sizeof(*bi));
+                                FALSE;
+                }
+
+                nBreakInfoIndex++;
+                return TRUE;
+}
+
+BOOL UnBreakProcessPtr(HANDLE process, LPVOID address)
+{
+                BOOL bRet = FALSE;
+                int nRead = 0;
+                BreakInfo *bi;
+                return FALSE;    
+}
+
+// 释放保存指针信息的链表，这是个回调函数。
+// name: FreeList
+// @param
+// x: 要释放的节点
+// cl: 这里未使用
+// @return
+// 无返回值
+
+void FreeList(void **x, void *cl)
+{
+                free(*x);
+}
+
+
+// 通过查找目标进程线程表中的数据，得到线程句柄
+// name: FindThreadHandle
+// @param// dwThreadId: 目标线程ID
+// hThread: 目标线程句柄
+// @return
+// 是否找到
+BOOL FindThreadHandle(IN DWORD dwThreadId,OUT PHANDLE hThread)
+{
+                int i = 0;
+                List_T p;
+                DWORD dwTmpId = 0;
+                for(p = lstThreadHandleTable; i  < List_length(p); i++,p = p->rest)
+                {
+                                dwTmpId = ((ThreadTableNode*)p->first)->dwThreadId;
+                                if(dwThreadId ==  dwThreadId)
+                                {
+                                                (*hThread) = ((ThreadTableNode*)p->first)->hThread;
+                                                return TRUE;
+                                }
+                }
+                return FALSE;
+}
+
+// 程序结束时进行释放资源
+// name: Clean
+// @param
+// 无
+// @return
+// 无
+VOID Clean()
+{
+                List_map(lstThreadHandleTable,FreeList,NULL);
+}
+
+BOOL SingleStepBreak(HANDLE hProcess,DWORD dwThreadId,LPVOID addr)
+{
+                int nFlag = 0;
+                HANDLE hRemoteThread = 0;
+                CONTEXT Regs;
+
+                printf("%s\r\n","y/n step?");
+                fflush(stdin);
+                scanf("%c",&nFlag);
+                fflush(stdin);
+                if(nFlag == 'y')
+                {
+                                //		dbgEvent->u.Exception.ExceptionRecord.ExceptionFlags
+                                //判断远程进程ID是否被保存，如果找到，则下，否则则出错
+                                nFlag = FindThreadHandle(dwThreadId,&hRemoteThread);
+                                if(nFlag == FALSE)
+                                {
+                                                TRACE(L"not found thread handle in thread list");
+                                                //		break;
+                                                return FALSE;
+                                }
+
+                                //从这儿设置TF位实现单步
+                                GetThreadContext(hRemoteThread,&Regs);
+                                Regs.EFlags |= 0x100;
+                                SetThreadContext(hRemoteThread,&Regs);
+
+                }
+                return TRUE;
+}
+
+VOID _cdecl wmain( ULONG argc, WCHAR* argv[] )
+{
+                STARTUPINFO startupInfo={0}; 
+                PROCESS_INFORMATION processInfo = {0};
+                WCHAR * commandLine ;
+                BOOL res;
+                DEBUG_EVENT debugEvent = { 0 } ;
+                DWORD endDisposition;
+                int commandLength ;
+
+                if (argc < 2)
+                {
+                                wprintf(L"03sample <target>\n");
+                                return;
+                } 
+
+
+                startupInfo.cb = sizeof(startupInfo);
+
+
+                commandLength = wcslen(argv[1])+(argv[2]?wcslen(argv[2]):0) + 2;
+                commandLine = (WCHAR*)malloc(sizeof(WCHAR)*commandLength);
+                if (!commandLine)
+                {
+                                TRACE(L"Allocation failed\n");
+                }
+                wcscpy_s(commandLine, commandLength, argv[1]);
+                if (argv[2])
+                {
+                                wcscat_s(commandLine, commandLength, L" ");
+                                wcscat_s(commandLine, commandLength, argv[2]);
+                }
+
+                res = CreateProcess(NULL, commandLine, NULL, NULL, FALSE, DEBUG_PROCESS, NULL, NULL, &startupInfo, &processInfo);
+                if (FALSE == res)
+                { 
+                                TRACE(L"CreateProcess failed\n");
+                                return;
+                }
+
+                endDisposition = DBG_CONTINUE;
+                for(;endDisposition != 0;)
+                {
+                                if (!WaitForDebugEvent(&debugEvent, INFINITE))
+                                {
+                                                TRACE(L"WaitForDebugEvent failed\n");
+                                                break;
+                                }
+                                endDisposition = ProcessEvent(&debugEvent);
+                                if (0 == endDisposition) break;
+                                if (!ContinueDebugEvent(debugEvent.dwProcessId, debugEvent.dwThreadId, endDisposition))
+                                {
+                                                TRACE(L"ContinueDebugEvent failed\n");
+                                                break;
+                                };
+                }
+                Clean();
+                getchar();
+}
+
